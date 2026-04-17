@@ -1,0 +1,17 @@
+{
+  "method": "nnls",
+  "network": "1ramp",
+  "seed": 11,
+  "date": "221014",
+  "hour": "08-09",
+  "n": 3,
+  "m": 3,
+  "nrmse_sumo": 0.0,
+  "nrmse_analytical": 0.0,
+  "kkt": {
+    "primal_min": 386.00000000000006,
+    "dual_min": 0.0,
+    "complementary_slackness": 0.0
+  },
+  "time_s": 0.0005
+}

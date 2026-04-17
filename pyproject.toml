@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "odspld"
+version = "0.1.0"
+description = "Analytical OD estimation via NNLS and Projected Langevin Dynamics, with SUMO validation on BO4Mob."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Seongjin Choi", email = "chois@umn.edu" },
+    { name = "Carolina Osorio" },
+]
+keywords = ["od-estimation", "nnls", "langevin", "traffic-assignment", "sumo", "bo4mob"]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "torch>=2.0",
+    "botorch>=0.10",
+    "gpytorch>=1.11",
+]
+
+[project.optional-dependencies]
+tracking = ["wandb>=0.16"]
+
+[project.urls]
+Homepage = "https://github.com/UMN-Choi-Lab/ODS_PLD"
+Paper = "https://github.com/UMN-Choi-Lab/ODS_PLD"
+
+[tool.setuptools.packages.find]
+include = ["odspld*"]

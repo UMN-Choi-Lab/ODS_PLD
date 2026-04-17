@@ -1,0 +1,16 @@
+{
+  "method": "pld_bestofN",
+  "network": "1ramp",
+  "seed": 11,
+  "date": "221014",
+  "hour": "08-09",
+  "N": 3,
+  "tau": 2.0,
+  "nrmse_sumo_best": 0.0002,
+  "nrmse_sumo_per_sample": [
+    0.0003,
+    0.0005,
+    0.0002
+  ],
+  "pld_time_s": 0.3
+}

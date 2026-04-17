@@ -1,0 +1,36 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.env
+.pytest_cache/
+build/
+dist/
+
+# Research outputs
+results/*.json
+results/*.log
+output/
+*.log
+
+# BO4Mob-produced artifacts that live inside the submodule
+external/BO4Mob/output/
+external/BO4Mob/od_for_single_run/od_*_pld_*.csv
+external/BO4Mob/od_for_single_run/od_*_turbo_*.csv
+external/BO4Mob/od_for_single_run/od_*_nnls_seed*.csv
+
+# VESSL rendered YAMLs (generated from templates; contain injected secrets)
+vessl-runs/rendered/
+
+# Claude Code scratch
+.claude/
+
+# W&B local cache
+wandb/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

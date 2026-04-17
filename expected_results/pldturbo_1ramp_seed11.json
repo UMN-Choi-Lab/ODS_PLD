@@ -1,0 +1,17 @@
+{
+  "method": "pld_turbo",
+  "network": "1ramp",
+  "seed": 11,
+  "date": "221014",
+  "hour": "08-09",
+  "n": 3,
+  "m": 3,
+  "nrmse_sumo_best": 0.0,
+  "wall_time_s": 485.9,
+  "phase1_time_s": 40.6,
+  "phase2_time_s": 444.9,
+  "n_init": 10,
+  "n_epoch": 50,
+  "batch_size": 2,
+  "total_evals": 110
+}

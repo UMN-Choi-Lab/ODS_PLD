@@ -1,0 +1,3 @@
+[submodule "external/BO4Mob"]
+	path = external/BO4Mob
+	url = https://github.com/UMN-Choi-Lab/BO4Mob.git
