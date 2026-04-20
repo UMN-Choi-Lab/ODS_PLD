@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Run PLD-initialized TuRBO on one network against real SUMO.
+"""Run Sobol-initialized TuRBO (BO4Mob stock) on one network against real SUMO.
 
-Writes `results/pldturbo_<network>_seed<seed>.json`.
+This is the ablation for `run_pld_turbo.py`: same GP / acquisition / trust-region,
+but phase 1 uses Sobol quasi-random draws instead of PLD posterior samples.
+
+Writes `results/sobolturbo_<network>_seed<seed>.json`.
 """
 
 from __future__ import annotations
@@ -18,11 +21,11 @@ from odspld.sumo import evaluate_od
 from odspld.tracking import finish as wandb_finish
 from odspld.tracking import init as wandb_init
 from odspld.tracking import log as wandb_log
-from odspld.turbo import pld_initialized_turbo
+from odspld.turbo import sobol_initialized_turbo
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="PLD+TuRBO with BO4Mob-style GP / acquisition.")
+    ap = argparse.ArgumentParser(description="Sobol+TuRBO with BO4Mob-style GP / acquisition.")
     ap.add_argument("--network", required=True, choices=list(NETWORK_CONFIGS))
     ap.add_argument("--date", default="221014")
     ap.add_argument("--hour", default=None)
@@ -39,11 +42,11 @@ def main() -> None:
 
     wandb_init(
         project=args.wandb_project,
-        name=f"pldturbo_{args.network}_seed{args.seed}",
-        group=f"pldturbo_{args.network}",
-        tags=["pld_turbo", args.network, f"seed{args.seed}", "sweep_v1"],
+        name=f"sobolturbo_{args.network}_seed{args.seed}",
+        group=f"sobolturbo_{args.network}",
+        tags=["sobol_turbo", args.network, f"seed{args.seed}", "sweep_v1"],
         config={
-            "method": "pld_turbo",
+            "method": "sobol_turbo",
             "network": args.network,
             "seed": args.seed,
             "date": args.date,
@@ -76,7 +79,7 @@ def main() -> None:
         )
 
     t0 = time.time()
-    best_nrmse, diag = pld_initialized_turbo(
+    best_nrmse, diag = sobol_initialized_turbo(
         A, y, evaluator,
         n_init=cfg["n_init_search"],
         n_epoch=cfg["n_epoch"],
@@ -90,9 +93,9 @@ def main() -> None:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"pldturbo_{args.network}_seed{args.seed}.json"
+    out_path = out_dir / f"sobolturbo_{args.network}_seed{args.seed}.json"
     out_path.write_text(json.dumps({
-        "method": "pld_turbo",
+        "method": "sobol_turbo",
         "network": args.network,
         "seed": args.seed,
         "date": args.date,
@@ -103,7 +106,7 @@ def main() -> None:
         "wall_time_s": round(wall, 1),
         **diag,
     }, indent=2))
-    print(f"[pldturbo/{args.network}] best NRMSE = {best_nrmse}; wrote {out_path}")
+    print(f"[sobolturbo/{args.network}] best NRMSE = {best_nrmse}; wrote {out_path}")
 
     wandb_log(
         {

@@ -43,7 +43,7 @@ def main() -> None:
         project=args.wandb_project,
         name=f"pld_{args.network}_seed{args.seed}",
         group=f"pld_{args.network}",
-        tags=["pld_bestofN", args.network, f"seed{args.seed}"],
+        tags=["pld_bestofN", args.network, f"seed{args.seed}", "sweep_v1"],
         config={
             "method": "pld_bestofN",
             "network": args.network,

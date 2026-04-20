@@ -39,7 +39,7 @@ def main() -> None:
         project=args.wandb_project,
         name=f"nnls_{args.network}_seed{args.seed}",
         group=f"nnls_{args.network}",
-        tags=["nnls", args.network, f"seed{args.seed}"],
+        tags=["nnls", args.network, f"seed{args.seed}", "sweep_v1"],
         config={
             "method": "nnls",
             "network": args.network,

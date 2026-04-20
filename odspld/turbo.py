@@ -1,10 +1,15 @@
-"""PLD-initialized TuRBO, matching BO4Mob's GP / acquisition configuration.
+"""TuRBO variants sharing BO4Mob's GP / acquisition configuration.
 
-This is a cleaned port of run115 from the research repo. The only change vs.
-BO4Mob's plain TuRBO is the initialization phase: instead of Sobol quasi-random
-points we evaluate PLD posterior samples. Everything else (GP kernel, trust
-region, Thompson sampling with perturbation mask, success/failure thresholds)
-matches BO4Mob.
+Two public entry points:
+
+- `pld_initialized_turbo`: the paper's proposed method. Phase 1 draws `n_init`
+  PLD posterior samples (with NNLS at `samples[0]`) for GP warm-start.
+- `sobol_initialized_turbo`: the Sobol+TuRBO ablation. Phase 1 uses Sobol
+  quasi-random draws uniformly in `[lb, ub]^n` — mirrors BO4Mob's stock TuRBO.
+
+Phase 2 (GP fit, trust region, Thompson sampling with perturbation mask,
+success/failure thresholds) is identical across both variants and lives in
+`_run_turbo_phase2`.
 """
 
 from __future__ import annotations
@@ -88,65 +93,32 @@ def _turbo_candidates(
     return X_cand
 
 
-def pld_initialized_turbo(
-    A: np.ndarray,
-    y: np.ndarray,
-    evaluator: Callable[[np.ndarray, str], float],
+def _run_turbo_phase2(
     *,
+    A: np.ndarray,
+    evaluator: Callable[[np.ndarray, str], float],
+    X_list: list,
+    Y_list: list,
+    best_nrmse: float,
     n_init: int,
     n_epoch: int,
     batch_size: int,
     lb: float,
     ub: float,
-    seed: int = 42,
-    tau: float = 2.0,
-    log_every: int = 20,
-    on_eval: Callable[[int, str, float, float], None] | None = None,
+    seed: int,
+    log_every: int,
+    on_eval: Callable[[int, str, float, float], None] | None,
+    phase1_time: float,
 ) -> Tuple[float, dict]:
-    """Run PLD+TuRBO and return (best_nrmse, diagnostics).
-
-    evaluator(x, label) -> NRMSE (None means failed; treated as 10.0).
-    on_eval(step, phase, nrmse, best_so_far) is called after every SUMO evaluation
-    if provided. `phase` is "pld_init" during warm-start and "turbo" during the
-    BO loop. Everything else mirrors BO4Mob's TuRBO state machine.
-    """
+    """GP + trust-region TuRBO loop — shared across PLD-init and Sobol-init variants."""
     from botorch.generation import MaxPosteriorSampling
 
-    rng = np.random.default_rng(seed)
-    torch.manual_seed(seed)
-
-    m, n = A.shape
-
-    # Phase 1: PLD initialization
-    print(f"[turbo] Phase 1: drawing {n_init} PLD samples...", flush=True)
-    t0 = time.time()
-    x0 = nnls_solve(A, y)
-    samples = projected_langevin(A, y, tau=tau, N=n_init, seed=seed, x_init=x0)
-
-    X_list: list[np.ndarray] = []
-    Y_list: list[float] = []
-    best_nrmse = float("inf")
-    for i in range(n_init):
-        s = np.clip(samples[i], lb, ub)
-        nrmse_i = evaluator(s, f"pld_{i}")
-        if nrmse_i is None:
-            nrmse_i = 10.0
-        X_list.append(s)
-        Y_list.append(-nrmse_i)
-        best_nrmse = min(best_nrmse, nrmse_i)
-        if on_eval is not None:
-            on_eval(i, "pld_init", float(nrmse_i), float(best_nrmse))
-        if (i + 1) % 5 == 0:
-            print(f"[turbo] PLD {i+1}/{n_init}: best={best_nrmse:.4f}", flush=True)
-    phase1_time = time.time() - t0
-    print(f"[turbo] Phase 1 done: best={best_nrmse:.4f} ({phase1_time:.0f}s)", flush=True)
-
+    n = A.shape[1]
     bounds_t = torch.tensor([[lb] * n, [ub] * n], dtype=_DTYPE)
     X = torch.tensor(np.array(X_list), dtype=_DTYPE)
     X_norm = (X - bounds_t[0]) / (bounds_t[1] - bounds_t[0])
     Y = torch.tensor(Y_list, dtype=_DTYPE).unsqueeze(-1)
 
-    # Phase 2: TuRBO with PLD warm-started data
     print(f"[turbo] Phase 2: TuRBO {n_epoch} epochs x {batch_size} batch", flush=True)
     t0 = time.time()
     length = 0.8
@@ -225,3 +197,117 @@ def pld_initialized_turbo(
         "total_evals": n_init + eval_count,
     }
     return best_nrmse, diagnostics
+
+
+def pld_initialized_turbo(
+    A: np.ndarray,
+    y: np.ndarray,
+    evaluator: Callable[[np.ndarray, str], float],
+    *,
+    n_init: int,
+    n_epoch: int,
+    batch_size: int,
+    lb: float,
+    ub: float,
+    seed: int = 42,
+    tau: float = 2.0,
+    log_every: int = 20,
+    on_eval: Callable[[int, str, float, float], None] | None = None,
+) -> Tuple[float, dict]:
+    """Run PLD+TuRBO and return (best_nrmse, diagnostics).
+
+    evaluator(x, label) -> NRMSE (None means failed; treated as 10.0).
+    on_eval(step, phase, nrmse, best_so_far) is called after every SUMO evaluation
+    if provided. `phase` is "pld_init" during warm-start and "turbo" during the
+    BO loop. Everything else mirrors BO4Mob's TuRBO state machine.
+    """
+    torch.manual_seed(seed)
+    n = A.shape[1]
+
+    # Phase 1: PLD initialization (NNLS mode is samples[0])
+    print(f"[turbo] Phase 1: drawing {n_init} PLD samples...", flush=True)
+    t0 = time.time()
+    x0 = nnls_solve(A, y)
+    samples = projected_langevin(A, y, tau=tau, N=n_init, seed=seed, x_init=x0)
+
+    X_list: list[np.ndarray] = []
+    Y_list: list[float] = []
+    best_nrmse = float("inf")
+    for i in range(n_init):
+        s = np.clip(samples[i], lb, ub)
+        nrmse_i = evaluator(s, f"pld_{i}")
+        if nrmse_i is None:
+            nrmse_i = 10.0
+        X_list.append(s)
+        Y_list.append(-nrmse_i)
+        best_nrmse = min(best_nrmse, nrmse_i)
+        if on_eval is not None:
+            on_eval(i, "pld_init", float(nrmse_i), float(best_nrmse))
+        if (i + 1) % 5 == 0:
+            print(f"[turbo] PLD {i+1}/{n_init}: best={best_nrmse:.4f}", flush=True)
+    phase1_time = time.time() - t0
+    print(f"[turbo] Phase 1 done: best={best_nrmse:.4f} ({phase1_time:.0f}s)", flush=True)
+
+    return _run_turbo_phase2(
+        A=A, evaluator=evaluator,
+        X_list=X_list, Y_list=Y_list, best_nrmse=best_nrmse,
+        n_init=n_init, n_epoch=n_epoch, batch_size=batch_size,
+        lb=lb, ub=ub, seed=seed, log_every=log_every,
+        on_eval=on_eval, phase1_time=phase1_time,
+    )
+
+
+def sobol_initialized_turbo(
+    A: np.ndarray,
+    y: np.ndarray,
+    evaluator: Callable[[np.ndarray, str], float],
+    *,
+    n_init: int,
+    n_epoch: int,
+    batch_size: int,
+    lb: float,
+    ub: float,
+    seed: int = 42,
+    log_every: int = 20,
+    on_eval: Callable[[int, str, float, float], None] | None = None,
+) -> Tuple[float, dict]:
+    """Run Sobol+TuRBO (BO4Mob's stock TuRBO) and return (best_nrmse, diagnostics).
+
+    Phase 1 draws `n_init` Sobol quasi-random points uniformly in `[lb, ub]^n`;
+    phase 2 is identical to PLD+TuRBO. `on_eval.phase` is "sobol_init" during
+    warm-start and "turbo" during the BO loop.
+    """
+    torch.manual_seed(seed)
+    n = A.shape[1]
+
+    print(f"[turbo] Phase 1: drawing {n_init} Sobol samples...", flush=True)
+    t0 = time.time()
+    engine = torch.quasirandom.SobolEngine(n, scramble=True, seed=seed)
+    U = engine.draw(n_init).to(dtype=_DTYPE).numpy()
+    samples = lb + (ub - lb) * U  # shape (n_init, n)
+
+    X_list: list[np.ndarray] = []
+    Y_list: list[float] = []
+    best_nrmse = float("inf")
+    for i in range(n_init):
+        s = np.clip(samples[i], lb, ub)
+        nrmse_i = evaluator(s, f"sobol_{i}")
+        if nrmse_i is None:
+            nrmse_i = 10.0
+        X_list.append(s)
+        Y_list.append(-nrmse_i)
+        best_nrmse = min(best_nrmse, nrmse_i)
+        if on_eval is not None:
+            on_eval(i, "sobol_init", float(nrmse_i), float(best_nrmse))
+        if (i + 1) % 5 == 0:
+            print(f"[turbo] Sobol {i+1}/{n_init}: best={best_nrmse:.4f}", flush=True)
+    phase1_time = time.time() - t0
+    print(f"[turbo] Phase 1 done: best={best_nrmse:.4f} ({phase1_time:.0f}s)", flush=True)
+
+    return _run_turbo_phase2(
+        A=A, evaluator=evaluator,
+        X_list=X_list, Y_list=Y_list, best_nrmse=best_nrmse,
+        n_init=n_init, n_epoch=n_epoch, batch_size=batch_size,
+        lb=lb, ub=ub, seed=seed, log_every=log_every,
+        on_eval=on_eval, phase1_time=phase1_time,
+    )

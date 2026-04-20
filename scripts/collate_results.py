@@ -18,6 +18,7 @@ METHOD_LABELS = [
     ("nnls", "NNLS"),
     ("pld_bestofN", "PLD best-N"),
     ("pld_turbo", "PLD+TuRBO"),
+    ("sobol_turbo", "Sobol+TuRBO"),
 ]
 
 NETWORKS = ["1ramp", "2corridor", "3junction", "4smallRegion"]
@@ -32,9 +33,7 @@ def _load_results(results_dir: Path) -> dict:
         method = data.get("method")
         if net not in agg or method not in agg[net]:
             continue
-        if method == "pld_bestofN":
-            nrmse = data.get("nrmse_sumo_best")
-        elif method == "pld_turbo":
+        if method in ("pld_bestofN", "pld_turbo", "sobol_turbo"):
             nrmse = data.get("nrmse_sumo_best")
         else:
             nrmse = data.get("nrmse_sumo")

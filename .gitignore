@@ -26,6 +26,7 @@ vessl-runs/rendered/
 
 # Claude Code scratch
 .claude/
+CLAUDE.md
 
 # W&B local cache
 wandb/

@@ -3,9 +3,9 @@
 # Use --dry-run to print the rendered YAMLs without submitting.
 #
 # Usage:
-#   bash vessl-runs/submit_all.sh           # submit all 30 runs
-#   bash vessl-runs/submit_all.sh --dry-run # preview only
-#   bash vessl-runs/submit_all.sh nnls      # only NNLS (10 runs)
+#   bash vessl-runs/submit_all.sh                 # submit full sweep (4 methods x 3 networks x 3 seeds = 36 runs)
+#   bash vessl-runs/submit_all.sh --dry-run       # preview only (no submission)
+#   bash vessl-runs/submit_all.sh nnls            # single method: nnls | pld | pldturbo | sobolturbo
 
 set -euo pipefail
 
@@ -13,8 +13,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RENDERED="$HERE/rendered"
 mkdir -p "$RENDERED"
 
-NETWORKS=("2corridor" "3junction")
-SEEDS=(0 1 2 3 4)
+NETWORKS=("1ramp" "2corridor" "3junction")
+SEEDS=(11 12 13)
 
 WANDB_API_KEY="${WANDB_API_KEY:-}"
 if [[ -z "$WANDB_API_KEY" && -f "$HOME/.netrc" ]]; then
@@ -30,12 +30,12 @@ METHOD_FILTER=""
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
-    nnls|pld|pldturbo) METHOD_FILTER="$arg" ;;
+    nnls|pld|pldturbo|sobolturbo) METHOD_FILTER="$arg" ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
 done
 
-METHODS=("nnls" "pld" "pldturbo")
+METHODS=("nnls" "pld" "pldturbo" "sobolturbo")
 
 for method in "${METHODS[@]}"; do
   if [[ -n "$METHOD_FILTER" && "$method" != "$METHOD_FILTER" ]]; then

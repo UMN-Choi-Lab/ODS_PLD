@@ -1,0 +1,38 @@
+name: ods-pld-sobolturbo-{NETWORK}-seed{SEED}
+description: Sobol+TuRBO (BO4Mob stock ablation) + SUMO validation on {NETWORK} (seed {SEED}).
+tags:
+  - ods-pld
+  - sobol-turbo
+  - {NETWORK}
+
+resources:
+  cluster: umn-choilab-cluster
+  preset: cpu-4core-8gbram
+
+image: quay.io/vessl-ai/torch:2.3.1-cuda12.1
+
+env:
+  WANDB_API_KEY: "{WANDB_API_KEY}"
+  WANDB_PROJECT: "ODS_PLD"
+
+run:
+  - command: |
+      set -euxo pipefail
+      apt-get update -qq
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sumo sumo-tools
+      export SUMO_HOME=/usr/share/sumo
+      export PATH=$SUMO_HOME/bin:$PATH
+
+      git clone https://github.com/UMN-Choi-Lab/ODS_PLD.git /root/code
+      cd /root/code
+      git submodule update --init --depth 1 external/BO4Mob
+      pip install --quiet --upgrade pip
+      pip install --quiet -e .
+      pip install --quiet -r external/BO4Mob/requirements.txt
+      pip install wandb
+      python -c "import wandb; print('wandb', wandb.__version__)"
+
+      python scripts/run_sobol_turbo.py --network {NETWORK} --seed {SEED} --out-dir /root/output
+
+export:
+  /root/output: vessl-artifact://
