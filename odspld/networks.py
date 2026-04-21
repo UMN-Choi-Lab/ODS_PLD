@@ -36,7 +36,10 @@ NETWORK_CONFIGS = {
     "3junction": {
         "default_hour": "08-09",
         "od_bound_start": 1.0,
-        "od_bound_end": 2000.0,
+        # 5 of 44 NNLS-solution ODs exceed 2000 (max ~5018); clipping to 2000 in
+        # pld_initialized_turbo destroyed the NNLS warm-start on those ODs. 5500
+        # is the value used by the paper's Run 170 to match the reported 0.237.
+        "od_bound_end": 5500.0,
         "n_init_search": 30,
         "n_epoch": 200,
         "bo_batch_size": 4,
