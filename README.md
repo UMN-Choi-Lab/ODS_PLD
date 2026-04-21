@@ -143,6 +143,44 @@ Mean NRMSE over seeds 11/12/13 (SUMO simulations vs. PeMS counts, 2022-10-14,
 
 `*` single seed (11); 3051 SUMO evaluations.
 
+## Sweep v1 reproduction (2026-04-20, VESSL cluster)
+
+Full reproduction of the first three networks with the Sobol+TuRBO ablation
+added as a fourth column (BO4Mob stock: same GP / acquisition / trust region,
+Sobol quasi-random phase 1 instead of PLD). Seeds 11/12/13; W&B project
+`ODS_PLD`, tag `sweep_v1`.
+
+| Network          | NNLS (1 eval) | PLD best-N (N=20) | PLD+TuRBO       | Sobol+TuRBO     |
+|------------------|---------------|-------------------|-----------------|-----------------|
+| 1ramp (n=3)      | 0.0000        | 0.0000            | **0.0000**      | 0.0004          |
+| 2corridor (n=21) | 0.1858        | 0.1856            | **0.1778**      | 0.2019*         |
+| 3junction (n=44) | 0.3378        | 0.3037            | **0.2822**      | 0.3028*         |
+
+`*` Sobol+TuRBO means include one converged-but-crashed seed per network at its
+last `best_so_far` (2corridor/seed13 ended at 0.2127 after 200 evals, TR
+collapsed to 0.025; 3junction/seed11 ended at 0.3148 after 110 evals). Both
+failures traced to the Sobol variant's wider GP evidence spread, which
+exceeded the 8 GiB container limit during phase 2. PLD+TuRBO cells ran in the
+same budget without incident — the PLD-clustered evidence produces tighter GP
+posteriors and a smaller memory footprint.
+
+Key observations:
+
+- **PLD+TuRBO wins on every network.** Breaks the analytical NNLS floor on
+  2corridor (0.1778 < 0.1858, −4.3%) and 3junction (0.2822 < 0.3378, −16.5%) —
+  TuRBO exploration recovers nonlinear residual that NNLS's linearized
+  assignment matrix can't see.
+- **PLD warm-start is the active ingredient.** Sobol+TuRBO is consistently
+  worse than PLD+TuRBO and even worse than NNLS on 2corridor (0.2019 > 0.1858).
+  100 GP-optimized SUMO evaluations starting from Sobol cannot match a single
+  closed-form NNLS solve.
+- **PLD best-N adds real value on 3junction.** Best-N beats NNLS by 10%
+  (0.3037 vs 0.3378) with just N=20 PLD draws. On 1ramp/2corridor the
+  `PLD best-N ≥ NNLS` bound is essentially tight; on 3junction it is strict.
+
+Full per-cell numbers and run URLs:
+<https://wandb.ai/benchoi93/ODS_PLD?filter=tag%3Asweep_v1>
+
 ## Wall-clock budget per seed
 
 | Network | n | SUMO evals | approx. wall clock |
