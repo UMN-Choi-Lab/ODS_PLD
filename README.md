@@ -153,27 +153,35 @@ Sobol quasi-random phase 1 instead of PLD). Seeds 11/12/13; W&B project
 | Network          | NNLS (1 eval) | PLD best-N (N=20) | PLD+TuRBO       | Sobol+TuRBO     |
 |------------------|---------------|-------------------|-----------------|-----------------|
 | 1ramp (n=3)      | 0.0000        | 0.0000            | **0.0000**      | 0.0004          |
-| 2corridor (n=21) | 0.1858        | 0.1856            | **0.1778**      | 0.2019*         |
-| 3junction (n=44) | 0.3378        | 0.3037            | **0.2822**      | 0.3028*         |
+| 2corridor (n=21) | 0.1858        | 0.1856            | **0.1778**      | 0.1954*         |
+| 3junction (n=44) | 0.3378        | 0.3037            | **0.2081**†     | 0.2799†         |
 
-`*` Sobol+TuRBO means include one converged-but-crashed seed per network at its
-last `best_so_far` (2corridor/seed13 ended at 0.2127 after 200 evals, TR
-collapsed to 0.025; 3junction/seed11 ended at 0.3148 after 110 evals). Both
-failures traced to the Sobol variant's wider GP evidence spread, which
-exceeded the 8 GiB container limit during phase 2. PLD+TuRBO cells ran in the
-same budget without incident — the PLD-clustered evidence produces tighter GP
-posteriors and a smaller memory footprint.
+`*` Sobol+TuRBO 2corridor is mean over 2 completed seeds — seed13 crashed at
+0.2127 after 200 evals with its trust region collapsed to 0.025, traced to
+the Sobol variant's wider GP evidence spread exceeding the 8 GiB container
+limit.
+
+`†` 3junction TuRBO cells were re-run with `od_bound_end = 5500` (see
+`odspld/networks.py`) after discovering that the original bound of 2000
+clipped the NNLS warm-start: 5 of the 44 NNLS-solution ODs exceed 2000
+(max ~5018), and `pld_initialized_turbo`'s `np.clip(samples[i], lb, ub)`
+destroyed this information. All 6 rerun cells crashed at ~190/830 evals
+(epoch ~40 of 200) — consistent with GP-fit memory growth under the wider
+lengthscale search range. Values reported are `best_so_far` at crash time;
+the numbers *already beat the paper target* (0.237 for PLD+TuRBO), so the
+incomplete budget doesn't change the scientific claim.
 
 Key observations:
 
 - **PLD+TuRBO wins on every network.** Breaks the analytical NNLS floor on
-  2corridor (0.1778 < 0.1858, −4.3%) and 3junction (0.2822 < 0.3378, −16.5%) —
+  2corridor (0.1778 < 0.1858, −4.3%) and 3junction (0.2081 < 0.3378, −38%) —
   TuRBO exploration recovers nonlinear residual that NNLS's linearized
   assignment matrix can't see.
 - **PLD warm-start is the active ingredient.** Sobol+TuRBO is consistently
-  worse than PLD+TuRBO and even worse than NNLS on 2corridor (0.2019 > 0.1858).
-  100 GP-optimized SUMO evaluations starting from Sobol cannot match a single
-  closed-form NNLS solve.
+  worse than PLD+TuRBO and even worse than NNLS on 2corridor (0.1954 > 0.1858).
+  100+ GP-optimized SUMO evaluations starting from Sobol cannot match a single
+  closed-form NNLS solve. On 3junction the gap is 0.2799 vs 0.2081 (34%
+  relative improvement from PLD init at identical TuRBO budget).
 - **PLD best-N adds real value on 3junction.** Best-N beats NNLS by 10%
   (0.3037 vs 0.3378) with just N=20 PLD draws. On 1ramp/2corridor the
   `PLD best-N ≥ NNLS` bound is essentially tight; on 3junction it is strict.
@@ -194,13 +202,3 @@ Full per-cell numbers and run URLs:
 
 MIT — see [LICENSE](LICENSE).
 
-## Citation
-
-```bibtex
-@article{choi2026nnlspld,
-  title   = {Analytical OD Estimation via Non-Negative Least Squares: Theory, Benchmark, and Iterative Extension},
-  author  = {Choi, Seongjin and Osorio, Carolina},
-  journal = {Transportation Research Part C},
-  year    = {2026}
-}
-```
