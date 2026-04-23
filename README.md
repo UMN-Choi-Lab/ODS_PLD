@@ -135,8 +135,8 @@ python scripts/collate_results.py --format latex > table.tex
 | Network          | NNLS (1 eval) | PLD best-N (N=20) | PLD+TuRBO       | Sobol+TuRBO     |
 |------------------|---------------|-------------------|-----------------|-----------------|
 | 1ramp (n=3)      | 0.0000        | 0.0000            | **0.0000**      | 0.0004          |
-| 2corridor (n=21) | 0.1858        | 0.1856            | **0.1778**      | 0.1954*         |
-| 3junction (n=44) | 0.3378        | 0.3037            | **0.2081**†     | 0.2799†         |
+| 2corridor (n=21) | 0.1858        | 0.1856            | **0.1778**      | 0.1954         |
+| 3junction (n=44) | 0.3378        | 0.3037            | **0.2081**     | 0.2799         |
 
 
 Key observations:
