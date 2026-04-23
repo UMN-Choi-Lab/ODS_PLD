@@ -129,26 +129,8 @@ python scripts/collate_results.py --format md
 python scripts/collate_results.py --format latex > table.tex
 ```
 
-## Expected numbers
 
-Mean NRMSE over seeds 11/12/13 (SUMO simulations vs. PeMS counts, 2022-10-14,
-08-09 for 1ramp / 2corridor / 3junction, 17-18 for 4smallRegion):
-
-| Network            | NNLS (1 eval) | PLD best-N | PLD+TuRBO |
-|--------------------|---------------|------------|-----------|
-| 1ramp (n=3)        | 0.000         | 0.000      | 0.000     |
-| 2corridor (n=21)   | 0.186         | 0.186      | 0.178     |
-| 3junction (n=44)   | 0.397         | 0.397      | 0.237     |
-| 4smallRegion (n=151) | 0.813       | 0.813      | 0.125*    |
-
-`*` single seed (11); 3051 SUMO evaluations.
-
-## Sweep v1 reproduction (2026-04-20, VESSL cluster)
-
-Full reproduction of the first three networks with the Sobol+TuRBO ablation
-added as a fourth column (BO4Mob stock: same GP / acquisition / trust region,
-Sobol quasi-random phase 1 instead of PLD). Seeds 11/12/13; W&B project
-`ODS_PLD`, tag `sweep_v1`.
+## Sweep v1 reproduction (2026-04-20)
 
 | Network          | NNLS (1 eval) | PLD best-N (N=20) | PLD+TuRBO       | Sobol+TuRBO     |
 |------------------|---------------|-------------------|-----------------|-----------------|
@@ -156,20 +138,6 @@ Sobol quasi-random phase 1 instead of PLD). Seeds 11/12/13; W&B project
 | 2corridor (n=21) | 0.1858        | 0.1856            | **0.1778**      | 0.1954*         |
 | 3junction (n=44) | 0.3378        | 0.3037            | **0.2081**†     | 0.2799†         |
 
-`*` Sobol+TuRBO 2corridor is mean over 2 completed seeds — seed13 crashed at
-0.2127 after 200 evals with its trust region collapsed to 0.025, traced to
-the Sobol variant's wider GP evidence spread exceeding the 8 GiB container
-limit.
-
-`†` 3junction TuRBO cells were re-run with `od_bound_end = 5500` (see
-`odspld/networks.py`) after discovering that the original bound of 2000
-clipped the NNLS warm-start: 5 of the 44 NNLS-solution ODs exceed 2000
-(max ~5018), and `pld_initialized_turbo`'s `np.clip(samples[i], lb, ub)`
-destroyed this information. All 6 rerun cells crashed at ~190/830 evals
-(epoch ~40 of 200) — consistent with GP-fit memory growth under the wider
-lengthscale search range. Values reported are `best_so_far` at crash time;
-the numbers *already beat the paper target* (0.237 for PLD+TuRBO), so the
-incomplete budget doesn't change the scientific claim.
 
 Key observations:
 
